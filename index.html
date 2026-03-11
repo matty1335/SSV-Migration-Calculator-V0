@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SSV ETH Migration Estimator</title>
+  <style>
+    :root {
+      --bg: #081225;
+      --panel: #0d1a33;
+      --panel-2: #122446;
+      --panel-3: #0f1e3c;
+      --text: #e8eefc;
+      --muted: #9fb0d3;
+      --border: #29426f;
+      --accent: #3b82f6;
+      --warn: #fbbf24;
+      --good: #22c55e;
+      --danger: #ef4444;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: linear-gradient(180deg, #081225 0%, #0b1730 100%);
+      color: var(--text);
+    }
+
+    .wrap {
+      max-width: 1520px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    .card {
+      background: rgba(13, 26, 51, 0.96);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 20px;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+    }
+
+    h1, h2 {
+      margin: 0 0 14px;
+    }
+
+    p {
+      color: var(--muted);
+      margin-top: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 16px;
+    }
+
+    .col-12 { grid-column: span 12; }
+    .col-6 { grid-column: span 6; }
+    .col-4 { grid-column: span 4; }
+    .col-3 { grid-column: span 3; }
+
+    @media (max-width: 1000px) {
+      .col-6, .col-4, .col-3 { grid-column: span 12; }
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 8px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+
+    textarea,
+    input,
+    select,
+    button {
+      width: 100%;
+      padding: 12px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+
+    textarea:focus,
+    input:focus,
+    select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+    }
+
+    textarea {
+      min-height: 110px;
+      resize: vertical;
+      line-height: 1.4;
+    }
+
+    select {
+      appearance: none;
+      background-image:
+        linear-gradient(45deg, transparent 50%, #b9c9f6 50%),
+        linear-gradient(135deg, #b9c9f6 50%, transparent 50%);
+      background-position:
+        calc(100% - 18px) calc(50% - 3px),
+        calc(100% - 12px) calc(50% - 3px);
+      background-size: 6px 6px, 6px 6px;
+      background-repeat: no-repeat;
+      padding-right: 36px;
+    }
+
+    button {
+      border: none;
+      background: linear-gradient(180deg, #3b82f6, #2563eb);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      filter: brightness(1.05);
+    }
+
+    button:disabled {
+      opacity: 0.7;
+      cursor: wait;
+    }
+
+    .row-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .row-actions > * {
+      flex: 1;
+      min-width: 220px;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+    }
+
+    @media (max-width: 1100px) {
+      .summary-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .stat {
+      background: var(--panel-2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .stat .label {
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+
+    .stat .value {
+      font-size: 22px;
+      font-weight: 800;
+      line-height: 1.15;
+    }
+
+    .help {
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 8px;
+      line-height: 1.4;
+    }
+
+    .toolbar {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+
+    .toolbar .control {
+      min-width: 180px;
+      max-width: 220px;
+    }
+
+    .table-shell {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      background: var(--panel-3);
+    }
+
+    .table-scroll {
+      max-height: 560px;
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1450px;
+    }
+
+    thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: #102246;
+    }
+
+    th, td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+    }
+
+    th {
+      color: #d7e3ff;
+      font-size: 12px;
+      letter-spacing: 0.01em;
+    }
+
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      word-break: break-all;
+    }
+
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .danger { color: var(--danger); }
+
+    .pill {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,0.03);
+      font-size: 12px;
+      color: #dbe6ff;
+      margin: 2px 6px 2px 0;
+    }
+
+    details.debug-details {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--panel-3);
+      overflow: hidden;
+    }
+
+    details.debug-details summary {
+      cursor: pointer;
+      padding: 12px 14px;
+      font-weight: 600;
+      color: var(--text);
+      list-style: none;
+      user-select: none;
+    }
+
+    details.debug-details summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.debug-details summary::after {
+      content: "Expand";
+      float: right;
+      color: var(--muted);
+      font-weight: 500;
+      font-size: 12px;
+    }
+
+    details.debug-details[open] summary::after {
+      content: "Minimize";
+    }
+
+    .debug {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: pre-wrap;
+      max-height: 260px;
+      overflow: auto;
+      border-top: 1px solid var(--border);
+      padding: 12px;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .empty {
+      padding: 28px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>SSV ETH Migration Estimator</h1>
+      <p>Enter one or more owner addresses, choose a runway, and estimate ETH needed per cluster for migration.</p>
+    </div>
+
+    <div class="card">
+      <h2>Inputs</h2>
+
+      <div class="grid">
+        <div class="col-12">
+          <label for="owners">Owner addresses, one per line</label>
+          <textarea id="owners" placeholder="0x123...
+0x456..."></textarea>
+        </div>
+
+        <div class="col-3">
+          <label for="network">Network</label>
+          <select id="network">
+            <option value="mainnet">mainnet</option>
+            <option value="holesky">holesky</option>
+          </select>
+        </div>
+
+        <div class="col-3">
+          <label for="runwayPreset">Runway days</label>
+          <select id="runwayPreset">
+            <option value="7">7 days</option>
+            <option value="30">30 days</option>
+            <option value="90">90 days</option>
+            <option value="180">180 days</option>
+            <option value="365" selected>365 days</option>
+            <option value="custom">Custom</option>
+          </select>
+        </div>
+
+        <div class="col-3 hidden" id="customRunwayWrap">
+          <label for="customRunwayDays">Custom runway days</label>
+          <input id="customRunwayDays" type="number" min="1" step="1" value="365" />
+        </div>
+
+        <div class="col-3">
+          <label for="operatorFee">Operator fee (per 32 ETH / year)</label>
+          <input id="operatorFee" type="number" step="0.000001" value="0" />
+        </div>
+
+        <div class="col-3">
+          <label for="networkFee">Network fee (per 32 ETH / year)</label>
+          <input id="networkFee" type="number" step="0.000001" value="0.00928" />
+        </div>
+
+        <div class="col-3">
+          <label for="minCollateral">Minimum liquidation collateral (ETH)</label>
+          <input id="minCollateral" type="number" step="0.000001" value="0.00094" />
+        </div>
+
+        <div class="col-3">
+          <label for="liquidationDays">Liquidation threshold days</label>
+          <input id="liquidationDays" type="number" step="1" value="7" />
+        </div>
+
+        <div class="col-3">
+          <label for="bufferPct">Safety buffer %</label>
+          <input id="bufferPct" type="number" step="0.01" value="0" />
+          <div class="help">Adds extra ETH on top of runway + collateral.</div>
+        </div>
+      </div>
+
+      <div class="row-actions">
+        <button id="runBtn">Discover and estimate</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Migration Dashboard Summary</h2>
+      <div id="migrationSummary" class="summary-grid"></div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar">
+        <div>
+          <h2 style="margin-bottom:6px;">Results</h2>
+          <div class="help">Current SSV balance is shown for reference only. ETH required for migration = operator fee (ETH) + runway + collateral (ETH).</div>
+        </div>
+
+        <div class="control">
+          <label for="pageSize">Results per page</label>
+          <select id="pageSize">
+            <option value="10">10</option>
+            <option value="30" selected>30</option>
+            <option value="50">50</option>
+            <option value="70">70</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="table-shell">
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Owner</th>
+                <th>Cluster Hash</th>
+                <th>Operator IDs</th>
+                <th>EB (ETH)</th>
+                <th>Current SSV Balance</th>
+                <th>Annual SSV Network Fee (ETH)</th>
+                <th>Daily Burn Rate (ETH/day)</th>
+                <th>Operator Fee (ETH)</th>
+                <th>Liquidation Collateral (ETH)</th>
+                <th>Runway + Collateral (ETH)</th>
+                <th>ETH required for migration</th>
+                <th>Warnings</th>
+              </tr>
+            </thead>
+            <tbody id="results"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Debug</h2>
+      <details class="debug-details">
+        <summary>Debug output</summary>
+        <div id="debug" class="debug"></div>
+      </details>
+    </div>
+  </div>
+
+  <script>
+    const API_BASE = "https://ssv-migration-tool.vercel.app";
+    let latestEstimates = [];
+
+    function num(v, d = 0) {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : d;
+    }
+
+    function fmt(v, decimals = 6) {
+      if (v === null || v === undefined || Number.isNaN(v)) return "—";
+      return Number(v).toLocaleString(undefined, {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function ownerList() {
+      return document.getElementById("owners").value
+        .split(/\n|,|\s+/)
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function gweiToEth(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return n / 1e9;
+    }
+
+    function weiToDisplay(v) {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return null;
+      return n / 1e18;
+    }
+
+    function apiUrl(path, params = {}) {
+      const url = new URL(path, API_BASE);
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") {
+          url.searchParams.set(k, v);
+        }
+      });
+      return url.toString();
+    }
+
+    function getRunwayDays() {
+      const preset = document.getElementById("runwayPreset").value;
+      if (preset === "custom") {
+        return Math.max(1, num(document.getElementById("customRunwayDays").value, 365));
+      }
+      return Math.max(1, num(preset, 365));
+    }
+
+    function updateRunwayUi() {
+      const preset = document.getElementById("runwayPreset").value;
+      const wrap = document.getElementById("customRunwayWrap");
+      wrap.classList.toggle("hidden", preset !== "custom");
+    }
+
+    function extractClusters(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload?.clusters)) return payload.clusters;
+      if (Array.isArray(payload?.data?.clusters)) return payload.data.clusters;
+      if (Array.isArray(payload?.data)) return payload.data;
+      if (Array.isArray(payload?.items)) return payload.items;
+      return [];
+    }
+
+    function extractClusterHash(cluster) {
+      if (cluster.clusterHash) return String(cluster.clusterHash);
+
+      const candidates = [
+        cluster.hash,
+        cluster.cluster?.clusterHash,
+        cluster.cluster?.hash
+      ].filter(Boolean);
+
+      if (candidates.length) return String(candidates[0]);
+
+      const idLike = cluster.id || cluster.clusterId || "";
+      if (typeof idLike === "string") {
+        return idLike.replace(/-(mainnet|holesky)$/i, "");
+      }
+
+      return "";
+    }
+
+    function extractOperatorIds(cluster) {
+      const raw =
+        cluster.operatorIds ||
+        cluster.operators ||
+        cluster.cluster?.operatorIds ||
+        cluster.operator_ids ||
+        [];
+
+      if (!Array.isArray(raw)) return [];
+
+      return raw.map(x => {
+        if (typeof x === "object" && x !== null) {
+          return Number(x.id ?? x.operatorId ?? x.operator_id);
+        }
+        return Number(x);
+      }).filter(Number.isFinite);
+    }
+
+    function extractCurrentSsvBalance(cluster) {
+      const raw =
+        cluster.balance ??
+        cluster.cluster?.balance ??
+        cluster.ssvBalance ??
+        cluster.currentBalance ??
+        null;
+
+      if (raw === null || raw === undefined || raw === "") return null;
+
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return null;
+
+      if (n > 1000000) return weiToDisplay(n);
+      return n;
+    }
+
+    async function getJson(url) {
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Accept": "application/json" }
+      });
+
+      const text = await response.text();
+      let data;
+
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { raw: text };
+      }
+
+      if (!response.ok) {
+        throw new Error(JSON.stringify({
+          status: response.status,
+          statusText: response.statusText,
+          body: data
+        }));
+      }
+
+      return data;
+    }
+
+    function estimate(row, cfg) {
+      const eb = row.totalEffectiveBalanceEth;
+
+      if (!Number.isFinite(eb)) {
+        return {
+          ...row,
+          eb: null,
+          dailyBurn: null,
+          annualSsvNetworkFeeEth: null,
+          operatorFeeEth: null,
+          liquidation: null,
+          runway: null,
+          runwayPlusCollateral: null,
+          ethRequiredForMigration: null,
+          warnings: [...(row.warnings || []), "Effective balance unavailable; estimate not calculated"]
+        };
+      }
+
+      const annualSsvNetworkFeeEth = cfg.networkFee * (eb / 32);
+      const operatorFeeEth = cfg.operatorFee * (eb / 32);
+      const annualFeeTotal = annualSsvNetworkFeeEth + operatorFeeEth;
+      const dailyBurn = annualFeeTotal / 365;
+      const liquidation = Math.max(cfg.minCollateral, dailyBurn * cfg.liquidationDays);
+      const runway = dailyBurn * cfg.runwayDays;
+      let runwayPlusCollateral = liquidation + runway;
+
+      if (cfg.bufferPct > 0) {
+        runwayPlusCollateral *= (1 + cfg.bufferPct / 100);
+      }
+
+      const ethRequiredForMigration = operatorFeeEth + runwayPlusCollateral;
+
+      return {
+        ...row,
+        eb,
+        dailyBurn,
+        annualSsvNetworkFeeEth,
+        operatorFeeEth,
+        liquidation,
+        runway,
+        runwayPlusCollateral,
+        ethRequiredForMigration,
+        warnings: [...(row.warnings || [])]
+      };
+    }
+
+    function renderSummary(estimates) {
+      const owners = new Set(estimates.map(x => x.owner).filter(Boolean)).size;
+      const totalEb = estimates.reduce((a, b) => a + (Number.isFinite(b.eb) ? b.eb : 0), 0);
+      const totalCurrentSsv = estimates.reduce((a, b) => a + (Number.isFinite(b.currentSsvBalance) ? b.currentSsvBalance : 0), 0);
+      const totalOperatorFeeEth = estimates.reduce((a, b) => a + (Number.isFinite(b.operatorFeeEth) ? b.operatorFeeEth : 0), 0);
+      const totalRunwayPlusCollateral = estimates.reduce((a, b) => a + (Number.isFinite(b.runwayPlusCollateral) ? b.runwayPlusCollateral : 0), 0);
+      const totalEthRequiredForMigration = estimates.reduce((a, b) => a + (Number.isFinite(b.ethRequiredForMigration) ? b.ethRequiredForMigration : 0), 0);
+
+      document.getElementById("migrationSummary").innerHTML = `
+        <div class="stat">
+          <div class="label">Owners</div>
+          <div class="value">${owners}</div>
+        </div>
+        <div class="stat">
+          <div class="label">Total Effective Balance</div>
+          <div class="value">${fmt(totalEb)} ETH</div>
+        </div>
+        <div class="stat">
+          <div class="label">Total current SSV Balance</div>
+          <div class="value">${fmt(totalCurrentSsv)} SSV</div>
+        </div>
+        <div class="stat">
+          <div class="label">Total operator fee (ETH)</div>
+          <div class="value">${fmt(totalOperatorFeeEth)} ETH</div>
+        </div>
+        <div class="stat">
+          <div class="label">Total required for runway + collateral (ETH)</div>
+          <div class="value">${fmt(totalRunwayPlusCollateral)} ETH</div>
+        </div>
+        <div class="stat">
+          <div class="label">Total ETH required for migration</div>
+          <div class="value">${fmt(totalEthRequiredForMigration)} ETH</div>
+        </div>
+      `;
+    }
+
+    function renderTable(estimates) {
+      const pageSize = num(document.getElementById("pageSize").value, 30);
+      const rows = estimates.slice(0, pageSize);
+
+      const body = document.getElementById("results");
+
+      if (!rows.length) {
+        body.innerHTML = `<tr><td colspan="12" class="empty">No results yet.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = rows.map(c => `
+        <tr>
+          <td class="mono">${c.owner || "—"}</td>
+          <td class="mono">${c.clusterHash || "—"}</td>
+          <td>${(c.operatorIds || []).join(", ") || "—"}</td>
+          <td>${fmt(c.eb)}</td>
+          <td>${fmt(c.currentSsvBalance)}</td>
+          <td>${fmt(c.annualSsvNetworkFeeEth)}</td>
+          <td>${fmt(c.dailyBurn)}</td>
+          <td>${fmt(c.operatorFeeEth)}</td>
+          <td>${fmt(c.liquidation)}</td>
+          <td>${fmt(c.runwayPlusCollateral)}</td>
+          <td class="${Number.isFinite(c.ethRequiredForMigration) && c.ethRequiredForMigration > 0 ? 'warn' : 'good'}">${fmt(c.ethRequiredForMigration)}</td>
+          <td>${(c.warnings || []).length ? (c.warnings || []).map(w => `<span class="pill">${w}</span>`).join("") : "—"}</td>
+        </tr>
+      `).join("");
+    }
+
+    function renderDebug(debugObj) {
+      document.getElementById("debug").textContent = JSON.stringify(debugObj, null, 2);
+    }
+
+    async function run() {
+      const btn = document.getElementById("runBtn");
+      btn.disabled = true;
+      btn.textContent = "Loading...";
+
+      try {
+        const owners = ownerList();
+
+        if (!owners.length) {
+          alert("Paste at least one owner address first.");
+          return;
+        }
+
+        const cfg = {
+          network: document.getElementById("network").value,
+          runwayDays: getRunwayDays(),
+          operatorFee: num(document.getElementById("operatorFee").value, 0),
+          networkFee: num(document.getElementById("networkFee").value, 0.00928),
+          minCollateral: num(document.getElementById("minCollateral").value, 0.00094),
+          liquidationDays: num(document.getElementById("liquidationDays").value, 7),
+          bufferPct: num(document.getElementById("bufferPct").value, 0)
+        };
+
+        const debug = {
+          apiBase: API_BASE,
+          cfg,
+          owners: owners,
+          steps: []
+        };
+
+        const allClusters = [];
+
+        for (const owner of owners) {
+          try {
+            const discoveryUrl = apiUrl("/api/discover", {
+              network: cfg.network,
+              owner
+            });
+
+            const discovery = await getJson(discoveryUrl);
+            const clusters = extractClusters(discovery.data);
+
+            debug.steps.push({
+              owner,
+              discoveryUrl,
+              discoveredClusters: clusters.length
+            });
+
+            for (const rawCluster of clusters) {
+              const clusterHash = extractClusterHash(rawCluster);
+              const operatorIds = extractOperatorIds(rawCluster);
+              const currentSsvBalance = extractCurrentSsvBalance(rawCluster);
+              const warnings = [];
+
+              let totalEffectiveBalanceEth = null;
+
+              if (clusterHash) {
+                try {
+                  const ebUrl = apiUrl("/api/total-effective-balance", {
+                    network: cfg.network,
+                    clusterHash
+                  });
+
+                  const ebResponse = await getJson(ebUrl);
+
+                  const ebGwei =
+                    ebResponse.data?.totalEffectiveBalance ??
+                    ebResponse.data?.effectiveBalance ??
+                    ebResponse.data?.data?.totalEffectiveBalance ??
+                    ebResponse.data?.data?.effectiveBalance ??
+                    null;
+
+                  totalEffectiveBalanceEth = gweiToEth(ebGwei);
+
+                  debug.steps.push({
+                    owner,
+                    clusterHash,
+                    ebUrl,
+                    ebGwei,
+                    totalEffectiveBalanceEth
+                  });
+                } catch (err) {
+                  warnings.push("Could not fetch cluster effective balance");
+                  debug.steps.push({
+                    owner,
+                    clusterHash,
+                    ebError: String(err)
+                  });
+                }
+              } else {
+                warnings.push("Missing cluster hash");
+                debug.steps.push({
+                  owner,
+                  clusterHash,
+                  message: "Missing cluster hash in discovery response"
+                });
+              }
+
+              allClusters.push({
+                owner,
+                clusterHash,
+                operatorIds,
+                currentSsvBalance,
+                totalEffectiveBalanceEth,
+                warnings
+              });
+            }
+          } catch (err) {
+            debug.steps.push({
+              owner,
+              error: String(err)
+            });
+          }
+        }
+
+        latestEstimates = allClusters.map(cluster => estimate(cluster, cfg));
+        renderSummary(latestEstimates);
+        renderTable(latestEstimates);
+        renderDebug(debug);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Discover and estimate";
+      }
+    }
+
+    function clearUI() {
+      latestEstimates = [];
+      renderSummary([]);
+      renderTable([]);
+      renderDebug({ status: "Idle" });
+    }
+
+    document.getElementById("runBtn").addEventListener("click", run);
+    document.getElementById("pageSize").addEventListener("change", () => renderTable(latestEstimates));
+    document.getElementById("runwayPreset").addEventListener("change", updateRunwayUi);
+
+    updateRunwayUi();
+    clearUI();
+  </script>
+</body>
+</html>
